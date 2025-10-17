@@ -1,155 +1,417 @@
--- Dragon Hub 0.3 - Cross-Platform Version
--- Update: 2025-10-17 05:44:36 UTC
--- Owner: paoplays958-coder
+-- Carrega a WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local root = char:WaitForChild("HumanoidRootPart")
-local isMobile = UIS.TouchEnabled
+-- Configuração do Key System (Platoboost)
+local service = "SEU USUARIO"
+local secret = "CHAVE SECRETA DO PLATOBOOST"
+local useNonce = true
 
--- Configurações
-local DISCORD_LINK = "https://discord.gg/pVsWE7WszB"
-local flyEnabled, speedEnabled, jumpEnabled = false, false, false
-local speedVal, jumpVal, flySpeed = 16, 50, 50
-local bv, bg, flyConn
+-- Variáveis globais
+local requestSending = false
+local cachedLink, cachedTime = "", 0
+local HttpService = game:GetService("HttpService")
+local keyVerified = false
 
--- UI Principal
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-local main = Instance.new("Frame", gui)
-main.Size = isMobile and UDim2.new(0.8, 0, 0.6, 0) or UDim2.new(0, 350, 0, 400)
-main.Position = UDim2.new(0.5, -175, 0.5, -200)
-main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-main.BorderSizePixel = 0
-main.Active = true
-main.Draggable = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
-
--- Containers
-local tabs = Instance.new("Frame", main)
-tabs.Size = UDim2.new(0, 80, 1, -60)
-tabs.Position = UDim2.new(0, 10, 0, 60)
-tabs.BackgroundTransparency = 1
-
-local content = Instance.new("Frame", main)
-content.Size = UDim2.new(1, -100, 1, -70)
-content.Position = UDim2.new(0, 90, 0, 60)
-content.BackgroundTransparency = 1
-
--- Função para criar botões
-local function createButton(parent, text, pos, color)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.8, 0, 0, isMobile and 50 or 40)
-    btn.Position = pos
-    btn.BackgroundColor3 = color or Color3.fromRGB(45, 45, 45)
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = isMobile and 20 or 14
-    btn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    return btn
+-- Funções auxiliares
+local fSetClipboard = setclipboard or toclipboard
+local fRequest = request or http_request
+local fStringChar = string.char
+local fToString = tostring
+local fStringSub = string.sub
+local fOsTime = os.time
+local fMathRandom = math.random
+local fMathFloor = math.floor
+local fGetHwid = gethwid or function() 
+    return game:GetService("Players").LocalPlayer.UserId 
 end
 
--- Aba Home/Menu
-local homeFrame = Instance.new("Frame", content)
-homeFrame.Size = UDim2.new(1, 0, 1, 0)
-homeFrame.BackgroundTransparency = 1
-homeFrame.Visible = true
-
-local versionLabel = Instance.new("TextLabel", homeFrame)
-versionLabel.Size = UDim2.new(1, 0, 0, 30)
-versionLabel.Position = UDim2.new(0, 0, 0.1, 0)
-versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "Dragon Hub v0.2"
-versionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-versionLabel.TextSize = isMobile and 24 or 18
-
-local discordBtn = createButton(homeFrame, "Join Discord", UDim2.new(0.1, 0, 0.3, 0), Color3.fromRGB(88, 101, 242))
-discordBtn.MouseButton1Click:Connect(function()
-    setclipboard(DISCORD_LINK)
-    discordBtn.Text = "Link Copied!"
-    task.wait(1)
-    discordBtn.Text = "Join Discord"
-end)
-
--- Botões de funcionalidades
-local flyBtn = createButton(content, "Fly", UDim2.new(0.1, 0, 0.2, 0))
-local speedBtn = createButton(content, "Speed", UDim2.new(0.1, 0, 0.35, 0))
-local jumpBtn = createButton(content, "Jump", UDim2.new(0.1, 0, 0.5, 0))
-local tpBtn = createButton(content, "Click TP", UDim2.new(0.1, 0, 0.65, 0))
-
--- Função Fly
-local function toggleFly()
-    flyEnabled = not flyEnabled
+-- Função de notificação
+local function onMessage(message)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", { 
+            Text = message 
+        })
+    end)
     
-    if flyEnabled then
-        bg = Instance.new("BodyGyro", root)
-        bg.P = 9e4
-        bv = Instance.new("BodyVelocity", root)
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        
-        flyConn = RunService.Heartbeat:Connect(function()
-            local cam = workspace.CurrentCamera
-            local moveDir = Vector3.new(
-                UIS:IsKeyDown(Enum.KeyCode.D) and 1 or UIS:IsKeyDown(Enum.KeyCode.A) and -1 or 0,
-                UIS:IsKeyDown(Enum.KeyCode.Space) and 1 or UIS:IsKeyDown(Enum.KeyCode.LeftShift) and -1 or 0,
-                UIS:IsKeyDown(Enum.KeyCode.S) and 1 or UIS:IsKeyDown(Enum.KeyCode.W) and -1 or 0
-            )
-            bv.Velocity = cam.CFrame:VectorToWorldSpace(moveDir * flySpeed)
-            bg.CFrame = cam.CFrame
-        end)
-        flyBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    pcall(function()
+        WindUI:Notify({
+            Title = "Sistema de Chaves",
+            Content = message,
+            Duration = 5,
+            Icon = message:find("válida") and "check" or "alert-triangle"
+        })
+    end)
+end
+
+-- Aguarda o jogo carregar
+repeat task.wait(1) until game:IsLoaded() and game.Players.LocalPlayer
+
+-- Funções de encoding/decoding
+function lEncode(data)
+    local success, result = pcall(HttpService.JSONEncode, HttpService, data)
+    if success then
+        return result
     else
-        if flyConn then flyConn:Disconnect() end
-        if bv then bv:Destroy() end
-        if bg then bg:Destroy() end
-        flyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        onMessage("Erro ao codificar JSON: " .. tostring(result))
+        return nil
     end
 end
 
--- Event Connections
-flyBtn.MouseButton1Click:Connect(toggleFly)
+function lDecode(data)
+    local success, result = pcall(HttpService.JSONDecode, HttpService, data)
+    if success then
+        return result
+    else
+        onMessage("Erro ao decodificar JSON: " .. tostring(result))
+        return nil
+    end
+end
 
-speedBtn.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    char.Humanoid.WalkSpeed = speedEnabled and speedVal or 16
-    speedBtn.BackgroundColor3 = speedEnabled and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(45, 45, 45)
-end)
+-- Função de digest simples
+local function lDigest(input)
+    local inputStr = tostring(input)
+    local hash = {}
+    for i = 1, #inputStr do
+        table.insert(hash, string.byte(inputStr, i))
+    end
+    local hashHex = ""
+    for _, byte in ipairs(hash) do
+        hashHex = hashHex .. string.format("%02x", byte)
+    end
+    return hashHex
+end
 
-jumpBtn.MouseButton1Click:Connect(function()
-    jumpEnabled = not jumpEnabled
-    char.Humanoid.JumpPower = jumpEnabled and jumpVal or 50
-    jumpBtn.BackgroundColor3 = jumpEnabled and Color3.fromRGB(50, 50, 255) or Color3.fromRGB(45, 45, 45)
-end)
+-- Detecta o host disponível
+local host = "https://api.platoboost.com"
+local success, hostResponse = pcall(fRequest, {
+    Url = host .. "/public/connectivity",
+    Method = "GET"
+})
 
-tpBtn.MouseButton1Click:Connect(function()
-    local tool = Instance.new("Tool")
-    tool.Name = "Click TP"
-    tool.RequiresHandle = true
-    
-    local handle = Instance.new("Part")
-    handle.Name = "Handle"
-    handle.Size = Vector3.new(1, 1, 2)
-    handle.Parent = tool
-    
-    tool.Activated:Connect(function()
-        local mouse = player:GetMouse()
-        if char and root then
-            root.CFrame = CFrame.new(mouse.Hit.Position) + Vector3.new(0, 3, 0)
+if not success or not hostResponse or (hostResponse.StatusCode ~= 200 and hostResponse.StatusCode ~= 429) then
+    host = "https://api.platoboost.net"
+end
+
+-- Função para cachear o link
+function cacheLink()
+    if cachedTime + (10 * 60) < fOsTime() then
+        local success, response = pcall(fRequest, {
+            Url = host .. "/public/start",
+            Method = "POST",
+            Body = lEncode({
+                service = service,
+                identifier = lDigest(fGetHwid())
+            }),
+            Headers = {
+                ["Content-Type"] = "application/json"
+            }
+        })
+        
+        if not success then
+            onMessage("Erro na requisição: " .. tostring(response))
+            return false, "Erro na requisição"
         end
+        
+        if not response then
+            onMessage("Nenhuma resposta do servidor")
+            return false, "Sem resposta"
+        end
+        
+        if response.StatusCode == 200 then
+            local decoded = lDecode(response.Body)
+            if not decoded then
+                return false, "Erro ao decodificar resposta"
+            end
+            
+            if decoded.success == true then
+                cachedLink = decoded.data.url
+                cachedTime = fOsTime()
+                onMessage("Link obtido com sucesso!")
+                return true, cachedLink
+            else
+                onMessage("Erro: " .. tostring(decoded.message))
+                return false, decoded.message
+            end
+        elseif response.StatusCode == 429 then
+            onMessage("Aguarde 20 segundos antes de tentar novamente")
+            return false, "Rate limit"
+        else
+            onMessage("Status inválido: " .. tostring(response.StatusCode))
+            return false, "Status inválido"
+        end
+    else
+        return true, cachedLink
+    end
+end
+
+-- Gera nonce aleatório
+local function generateNonce()
+    local str = ""
+    for _ = 1, 16 do
+        str = str .. fStringChar(fMathFloor(fMathRandom() * (122 - 97 + 1)) + 97)
+    end
+    return str
+end
+
+-- Testa geração de nonce
+for _ = 1, 5 do
+    local oNonce = generateNonce()
+    task.wait(0.2)
+    if generateNonce() == oNonce then
+        error("Erro no nonce do Platoboost")
+    end
+end
+
+-- Copia link para área de transferência
+local function copyLink()
+    local success, link = cacheLink()
+    if success then
+        local clipSuccess, clipError = pcall(fSetClipboard, link)
+        if clipSuccess then
+            onMessage("Link copiado para a área de transferência!")
+        else
+            onMessage("Erro ao copiar: " .. tostring(clipError))
+        end
+    end
+end
+
+-- Resgata uma nova chave
+local function redeemKey(key)
+    local nonce = generateNonce()
+    local endpoint = host .. "/public/redeem/" .. fToString(service)
+    local body = {
+        identifier = lDigest(fGetHwid()),
+        key = key
+    }
+    
+    if useNonce then
+        body.nonce = nonce
+    end
+    
+    local success, response = pcall(fRequest, {
+        Url = endpoint,
+        Method = "POST",
+        Body = lEncode(body),
+        Headers = {
+            ["Content-Type"] = "application/json"
+        }
+    })
+    
+    if not success or not response then
+        onMessage("Erro na requisição de resgate")
+        return false
+    end
+    
+    if response.StatusCode == 200 then
+        local decoded = lDecode(response.Body)
+        if not decoded then return false end
+        
+        if decoded.success == true and decoded.data.valid == true then
+            if useNonce then
+                if decoded.data.hash == lDigest("true" .. "-" .. nonce .. "-" .. secret) then
+                    onMessage("Chave resgatada com sucesso!")
+                    return true
+                else
+                    onMessage("Falha na verificação de integridade")
+                    return false
+                end
+            else
+                onMessage("Chave resgatada com sucesso!")
+                return true
+            end
+        else
+            onMessage("Chave inválida")
+            return false
+        end
+    elseif response.StatusCode == 429 then
+        onMessage("Aguarde 20 segundos antes de tentar novamente")
+        return false
+    else
+        onMessage("Status inválido: " .. tostring(response.StatusCode))
+        return false
+    end
+end
+
+-- Verifica se a chave é válida
+local function verifyKey(key)
+    if not key or key == "" then
+        onMessage("Por favor, insira uma chave válida")
+        return false
+    end
+    
+    if requestSending == true then
+        onMessage("Aguarde a requisição anterior")
+        return false
+    end
+    
+    requestSending = true
+    local nonce = generateNonce()
+    local endpoint = host .. "/public/whitelist/" .. fToString(service) .. 
+                     "?identifier=" .. lDigest(fGetHwid()) .. "&key=" .. key
+    
+    if useNonce then
+        endpoint = endpoint .. "&nonce=" .. nonce
+    end
+    
+    local success, response = pcall(fRequest, {
+        Url = endpoint,
+        Method = "GET"
+    })
+    
+    requestSending = false
+    
+    if not success or not response then
+        onMessage("Erro na verificação")
+        return false
+    end
+    
+    if response.StatusCode == 200 then
+        local decoded = lDecode(response.Body)
+        if not decoded then return false end
+        
+        if decoded.success == true then
+            if decoded.data.valid == true then
+                onMessage("Chave válida!")
+                return true
+            else
+                if fStringSub(key, 1, 5) == "FREE_" then
+                    return redeemKey(key)
+                else
+                    onMessage("Chave inválida")
+                    return false
+                end
+            end
+        else
+            onMessage("Erro: " .. tostring(decoded.message))
+            return false
+        end
+    elseif response.StatusCode == 429 then
+        onMessage("Aguarde 20 segundos antes de tentar novamente")
+        return false
+    else
+        onMessage("Status inválido: " .. tostring(response.StatusCode))
+        return false
+    end
+end
+
+local function loadMainScript()
+    local loadSuccess, loadError = pcall(function()
+        print("funciono kk") -- loadstring(game:HttpGet("https://raw.githubusercontent.com/paoplays958-coder/coelho-0.22/refs/heads/main/coelho%200.22"))()
     end)
     
-    tool.Parent = player.Backpack
-end)
+    if loadSuccess then
+        onMessage("Script carregado com sucesso!")
+        return true
+    else
+        onMessage("Erro ao carregar script: " .. tostring(loadError))
+        return false
+    end
+end
 
--- Título
-local title = Instance.new("TextLabel", main)
-title.Text = "Dragon Hub"
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = isMobile and 24 or 16
-title.Font = Enum.Font.GothamBold
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
+-- Obtém o link inicial
+cacheLink()
+
+-- Configuração da Janela com WindUI (SEM KeySystem integrado)
+local Window = WindUI:CreateWindow({
+    Title = "XXMZ Hub",
+    Icon = "shield",
+    Author = "By Uma_pessoa29",
+    Folder = "XXMZHub",
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+    Background = "rbxassetid://106924593304955"
+})
+
+-- Cria a aba Key System
+local KeyTab = Window:Tab({
+    Title = "Key System",
+    Icon = "key"
+})
+
+-- Título e descrição
+local Paragraph = KeyTab:Paragraph({
+    Title = "🔐 Sistema de Verificação",
+    Desc = "Para acessar o hub, você precisa verificar uma chave. Clique em 'Pegar Chave' para obter uma chave gratuita, depois insira-a no campo abaixo e clique em 'Verificar'."
+})
+
+-- Botão para pegar chave
+local GetKeyButton = KeyTab:Button({
+    Title = "Pegar Chave",
+    Desc = "Copia o link para obter uma chave gratuita",
+    Icon = "link",
+    Callback = function()
+        copyLink()
+    end
+})
+
+-- Campo de texto para chave
+local KeyInput = KeyTab:Input({
+    Title = "Sua Chave",
+    Desc = "Cole a chave obtida no site",
+    Value = "",
+    InputIcon = "key",
+    Type = "Input",
+    Placeholder = "Cole sua chave aqui...",
+    Callback = function(input)
+        -- Input armazenado automaticamente
+    end
+})
+
+-- Botão para verificar chave
+local VerifyButton = KeyTab:Button({
+    Title = "Verificar Chave",
+    Desc = "Valida sua chave e carrega o hub",
+    Icon = "check-circle",
+    Callback = function()
+        local key = KeyInput.Value
+        if key == "" or key == nil then
+            onMessage("Por favor, insira uma chave no campo acima")
+            return
+        end
+        
+        onMessage("Verificando chave...")
+        local success = verifyKey(key)
+        
+        if success then
+            keyVerified = true
+            onMessage("✅ Chave válida! Carregando hub...")
+            task.wait(1)
+            
+            local scriptLoaded = loadMainScript()
+            if scriptLoaded then
+                onMessage("Hub carregado! Fechando menu...")
+                task.wait(1)
+                pcall(function()
+                    Window:Destroy()
+                end)
+            else
+                onMessage("Erro ao carregar o hub. Tente novamente.")
+            end
+        else
+            onMessage("❌ Chave inválida. Obtenha uma nova chave e tente novamente")
+        end
+    end
+})
+
+-- Botão de ajuda
+local HelpButton = KeyTab:Button({
+    Title = "Ajuda",
+    Desc = "Instruções detalhadas",
+    Icon = "help-circle",
+    Callback = function()
+        WindUI:Notify({
+            Title = "Como usar",
+            Content = "1. Clique em 'Pegar Chave'\n2. Complete os passos no site\n3. Cole a chave no campo\n4. Clique em 'Verificar Chave'",
+            Duration = 10,
+            Icon = "info"
+        })
+    end
+})
